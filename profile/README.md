@@ -7,7 +7,11 @@
 
 <img src="./images/containers.png">
 
+<img src="./images/models.png">
+
 <img src="./images/logging.png">
+
+<img src="./images/trace.png">
 
 ## What we’re building
 
@@ -16,6 +20,14 @@
 - **Policies & controls**: auth (JWT), RBAC, quotas/rate limits, model allow-lists, request/response logging
 - **Observability by default**: traces ([Langfuse](https://langfuse.com/)) + logs ([Loki](https://grafana.com/oss/loki/)/[Grafana](https://grafana.com/grafana)) wired through the gateway
 - **Optional local runtime management**: deploy and operate containerized inference + model assets via [Huggingface](https://huggingface.co/)
+
+## Features
+
+- **OpenAI-compatible gateway**: `/v1/models`, `/v1/chat/completions`, `/v1/embeddings`
+- **Centralized policy enforcement**: tenant-aware auth, model/provider restrictions, and rate controls
+- **Unified observability**: live traces, request metadata, and operational dashboards
+- **Ops console**: container/image/network/stack controls with RBAC and audit logs
+- **System initialization flow**: guided setup for shared services and gateway configuration
 
 ## Why it matters
 
