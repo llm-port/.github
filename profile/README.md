@@ -29,6 +29,9 @@
 - **Ops console**: container/image/network/stack controls with RBAC and audit logs
 - **System initialization flow**: guided setup for shared services and gateway configuration
 
+Sequence reference:
+- **Complete call sequence graphs**: [`call-sequence.md`](./call-sequence.md)
+
 ## Why it matters
 
 You get **sovereign-by-default AI**: keep data on-prem when needed, use remote providers when allowed —
