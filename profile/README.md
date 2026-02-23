@@ -13,6 +13,10 @@
 
 <img src="./images/trace.png">
 
+<img src="./images/api.png">
+
+<img src="./images/rag_collectors.png">
+
 ## What we’re building
 
 - **One endpoint for all apps**: OpenAI-compatible API (`/v1/*`)
