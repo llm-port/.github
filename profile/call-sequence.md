@@ -8,11 +8,14 @@ This document captures end-to-end call sequences across frontend, backend, gatew
 sequenceDiagram
     autonumber
     participant U as Operator / App Client
-    participant FE as airgap_frontend (React)
-    participant BE as airgap_backend (FastAPI)
+    participant FE as llm_port_frontend (airgap_frontend)
+    participant BE as llm_port_backend (airgap_backend)
     participant GW as llm_port_api (Gateway)
+    participant RAG as llm_port_rag (Internal API)
     participant PG as Postgres
     participant R as Redis
+    participant RMQ as RabbitMQ
+    participant MIO as MinIO
     participant LP as LLM Provider Runtime/API
     participant LF as Langfuse (web/worker)
     participant LK as Loki
@@ -33,6 +36,17 @@ sequenceDiagram
     LP-->>GW: Completion / stream / embeddings response
     GW->>LF: Trace + generation + usage + error status
     GW-->>U: OpenAI-compatible response/error envelope
+    end
+
+    rect rgb(245,245,235)
+    FE->>BE: RAG admin/search calls (/api/admin/rag/*)
+    BE->>RAG: Proxy internal request (/api/internal/* + service token)
+    RAG->>PG: Read/write RAG metadata + vectors
+    RAG->>MIO: Read/write raw snapshots and uploads
+    RAG->>RMQ: Enqueue ingest/publish tasks
+    RMQ-->>RAG: Task delivery to worker/scheduler
+    RAG-->>BE: Internal response
+    BE-->>FE: RAG response payload
     end
 
     rect rgb(255,245,245)
@@ -149,8 +163,8 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant U as Admin User
-    participant FE as airgap_frontend (/admin/llm/graph)
-    participant BE as airgap_backend
+    participant FE as llm_port_frontend (/admin/llm/graph)
+    participant BE as llm_port_backend
     participant SVC as graph_service
     participant PG as Postgres (llm_api + backend DB)
 
@@ -186,8 +200,8 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant U as Admin User
-    participant FE as airgap_frontend
-    participant BE as airgap_backend
+    participant FE as llm_port_frontend
+    participant BE as llm_port_backend
     participant RBAC as Auth + RBAC + RootMode
     participant OPS as Container Service
     participant DE as Docker Engine
@@ -213,8 +227,8 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant U as Admin User
-    participant FE as airgap_frontend (Settings)
-    participant BE as airgap_backend
+    participant FE as llm_port_frontend (Settings)
+    participant BE as llm_port_backend
     participant SET as system_settings service
     participant ENC as Secret Crypto
     participant DB as Backend DB
@@ -259,8 +273,8 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant U as Operator
-    participant FE as airgap_frontend (Wizard)
-    participant BE as airgap_backend
+    participant FE as llm_port_frontend (Wizard)
+    participant BE as llm_port_backend
     participant WIZ as Wizard Service
     participant SET as Settings Service
     participant APPLY as Apply Orchestrator
@@ -289,7 +303,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant AG as Infra Agent
-    participant BE as airgap_backend
+    participant BE as llm_port_backend
     participant REG as Agent Registry
     participant APPLY as Apply Orchestrator
 
@@ -332,4 +346,104 @@ sequenceDiagram
 
     GW->>LF: LLM trace/generation events
     LF-->>GW: ingest ack
+```
+
+## 11) RAG Search (Frontend to Internal RAG)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Admin User
+    participant FE as llm_port_frontend (/admin/rag/search)
+    participant BE as llm_port_backend
+    participant RBAC as JWT + RBAC
+    participant RC as RagServiceClient
+    participant RAG as llm_port_rag
+    participant DB as Postgres (RAG metadata + pgvector)
+
+    U->>FE: Submit query + tenant/workspace/principals/filters
+    FE->>BE: POST /api/admin/rag/knowledge/search
+    BE->>RBAC: Check rag.search:read
+    RBAC-->>BE: allow/deny
+    alt Allowed
+      BE->>RC: search_knowledge(payload)
+      RC->>RAG: POST /api/internal/knowledge/search (service token)
+      RAG->>DB: ACL + scope prefilter + vector/keyword/hybrid query
+      DB-->>RAG: Ranked chunks
+      RAG-->>RC: Search response
+      RC-->>BE: Search response
+      BE-->>FE: 200 results + optional debug
+    else Denied
+      BE-->>FE: 401/403
+    end
+```
+
+## 12) RAG Upload + Draft + Publish (Immediate)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Admin User
+    participant FE as llm_port_frontend (/admin/rag/explorer)
+    participant BE as llm_port_backend
+    participant RAG as llm_port_rag API
+    participant MIO as MinIO
+    participant RMQ as RabbitMQ
+    participant W as RAG Taskiq Worker
+    participant DB as Postgres (RAG metadata + pgvector)
+
+    U->>FE: Upload files into container
+    FE->>BE: POST /api/admin/rag/uploads/presign
+    BE->>RAG: POST /api/internal/admin/uploads/presign
+    RAG-->>BE: object_key + presigned URL
+    BE-->>FE: presigned URL
+    FE->>MIO: PUT file bytes (direct browser upload)
+    FE->>BE: POST /api/admin/rag/uploads/complete
+    BE->>RAG: POST /api/internal/admin/uploads/complete
+    RAG->>DB: Add draft operation (upload)
+    RAG-->>BE: draft_id + operation_id
+    BE-->>FE: Draft update
+
+    U->>FE: Publish now
+    FE->>BE: POST /api/admin/rag/drafts/{id}/publish
+    BE->>RAG: POST /api/internal/admin/drafts/{id}/publish
+    RAG->>DB: Create publish request + ingest job
+    RAG->>RMQ: Enqueue rag.process_publish
+    RMQ-->>W: Deliver task
+    W->>MIO: Read uploaded object
+    W->>DB: changed-file check (sha256), extract/chunk/embed/index
+    W->>DB: Update draft/publish/job status + events
+    RAG-->>BE: publish_id + job_id
+    BE-->>FE: queued/running response
+```
+
+## 13) RAG Scheduled Publish
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant FE as llm_port_frontend
+    participant BE as llm_port_backend
+    participant RAG as llm_port_rag API
+    participant S as RAG Scheduler
+    participant RMQ as RabbitMQ
+    participant W as RAG Taskiq Worker
+    participant DB as Postgres (RAG metadata + pgvector)
+
+    FE->>BE: POST /api/admin/rag/drafts/{id}/publish (scheduled_for)
+    BE->>RAG: POST /api/internal/admin/drafts/{id}/publish
+    RAG->>DB: Create publish request status=scheduled
+    RAG-->>BE: publish_id status=scheduled
+    BE-->>FE: Accepted scheduled publish
+
+    loop scheduler tick
+      S->>DB: Query due publishes (scheduled_for <= now)
+      DB-->>S: due publish list
+      S->>DB: Create ingest job + mark queued
+      S->>RMQ: Enqueue rag.process_publish
+    end
+
+    RMQ-->>W: Deliver publish task
+    W->>DB: Process operations and index changes
+    W->>DB: Mark publish/job final status
 ```
