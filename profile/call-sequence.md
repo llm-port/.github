@@ -8,8 +8,8 @@ This document captures end-to-end call sequences across frontend, backend, gatew
 sequenceDiagram
     autonumber
     participant U as Operator / App Client
-    participant FE as llm_port_frontend (airgap_frontend)
-    participant BE as llm_port_backend (airgap_backend)
+    participant FE as llm_port_frontend (llm_port_frontend)
+    participant BE as llm_port_backend (llm_port_backend)
     participant GW as llm_port_api (Gateway)
     participant RAG as llm_port_rag (Internal API)
     participant PG as Postgres
