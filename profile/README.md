@@ -72,8 +72,10 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 
 - **Presidio-based** standalone service for PII scanning, redaction, and reversible tokenization
 - **Gateway-integrated**: per-tenant PII policies for telemetry sanitization and egress control
+- **System default + tenant override** policy precedence (`tenant > system default > none`)
 - **Configurable entity types**: PERSON, EMAIL, PHONE, CREDIT_CARD, SSN, IP_ADDRESS, etc.
-- **Fail modes**: block, allow, or fallback-to-local on PII service errors
+- **Fail modes**: block, allow, or active fallback-to-local on PII egress failures
+- **Module-aware admin UX**: PII enablement owned by Modules tab; settings are hidden when module is disabled
 
 **Observability**
 
