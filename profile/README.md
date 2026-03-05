@@ -1,5 +1,7 @@
 # llm.port
 
+> **[Documentation & Screenshots → llm-port.github.io](https://llm-port.github.io)**
+
 **llm.port** is a self-hosted **all-in-one LLM platform** that combines:
 
 - an OpenAI-compatible gateway for app traffic
@@ -193,7 +195,8 @@ Contributions are welcome. If you'd like to help early, feel free to get in cont
 
 ## License
 
-Apache 2.0 (Currently under discussion)
+Apache 2.0
 
-Third-party components: llm.port deploys and integrates several upstream open-source services via Docker images (e.g., PostgreSQL/pgvector, ClickHouse, RabbitMQ, Grafana/Loki, Langfuse, MinIO). Each component remains licensed by its respective authors under its original license terms. See THIRD_PARTY_NOTICES.md for the full list, versions, and licenses.
-Note: Some optional components use strong copyleft or source-available licenses (e.g., AGPLv3, SSPL/RSAL). If your organization has restrictions around these licenses, disable the relevant compose profiles or substitute compatible alternatives.
+Third-party components: llm.port deploys and integrates several upstream open-source services via Docker images (e.g., PostgreSQL/pgvector, ClickHouse, RabbitMQ, Grafana/Loki, Langfuse, MinIO). Each component remains licensed by its respective authors under its original license terms. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for the full list, versions, and licenses.
+
+> Some optional components use strong copyleft or source-available licenses (e.g., AGPLv3, SSPL/RSAL). If your organization has restrictions around these licenses, disable the relevant compose profiles or substitute compatible alternatives.
