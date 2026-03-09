@@ -23,11 +23,15 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 
 <img src="./images/dashboard.png">
 
+<img src="./images/chat.png">
+
 <img src="./images/containers.png">
 
 <img src="./images/llm_providers.png">
 
 <img src="./images/llm_provider_details.png">
+
+<img src="./images/llm_provider_local.png">
 
 <img src="./images/models.png">
 
@@ -37,11 +41,17 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 
 <img src="./images/security_overview.png">
 
+<img src="./images/profile.png">
+
 <img src="./images/pii.png">
 
-<img src="./images/settings.png">
+<img src="./images/rag_kb.png">
 
 <img src="./images/rag_collectors.png">
+
+<img src="./images/scheduler.png">
+
+<img src="./images/settings.png">
 
 <img src="./images/api.png">
 
