@@ -194,33 +194,73 @@ without changing your apps or losing governance and observability.
 
 ## Repository layout
 
-| Repo                | Description                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| `llm-port-frontend` | React admin console UI (Vite + React Router)                                                |
-| `llm-port-backend`  | FastAPI control-plane: users, RBAC, LLM management, system settings, Docker orchestration   |
-| `llm-port-api`      | OpenAI-compatible V1 gateway service with sessions, memory, and attachments (FastAPI)       |
-| `llm-port-rag`      | Internal RAG subsystem: ingestion, knowledge search, collector plugins (FastAPI + pgvector) |
-| `llm-port-pii`      | PII detection and redaction service (FastAPI + Presidio)                                    |
-| `llm-port-auth`     | SSO / OIDC authentication service with OAuth provider adapters (FastAPI)                    |
-| `llm-port-mailer`   | Email delivery service with templated notifications (FastAPI + Jinja2)                      |
-| `llm-port-docling`  | Document processing service for text extraction (FastAPI + IBM Docling)                     |
-| `llm-port-cli`      | CLI installer and management tool (Click + Textual TUI)                                     |
-| `llm-port-shared`   | Shared Docker Compose stack: Postgres, Redis, Grafana, Loki, Alloy                          |
-| `llm-port-dev`      | Project documentation, feature specs, infrastructure docs, dev scripts                      |
+| Repo                | Description                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `llm-port-frontend` | React admin console UI (Vite + React Router)                                              |
+| `llm-port-backend`  | FastAPI control-plane: users, RBAC, LLM management, system settings, Docker orchestration |
+| `llm-port-api`      | OpenAI-compatible V1 gateway service with sessions, memory, and attachments (FastAPI)     |
+| `llm-port-pii`      | PII detection and redaction service (FastAPI + Presidio)                                  |
+| `llm-port-cli`      | CLI installer and management tool (Click + Textual TUI)                                   |
+| `llm-port-shared`   | Shared Docker Compose stack: Postgres, Redis, Grafana, Loki, Alloy                        |
 
 > Visibility note: the org is public, but some repos may be private temporarily while we are finalizing and cleaning things up.
 
 ---
 
-## Getting started (preview)
+## Getting started
 
-Until the public quickstart is finalized, the intended flow is:
+### Prerequisites
 
-1. Start shared services (Postgres, Redis, Grafana, Loki)
-2. Start the control-plane backend
-3. Run the init wizard to configure secrets, providers, and gateway settings
-4. Add providers (remote) and/or runtimes (local)
-5. Point your apps to the OpenAI-compatible endpoint
+- Docker Engine 24+ with Compose V2
+- Git
+- Python 3.12+ (or [uv](https://docs.astral.sh/uv/) — recommended)
+- Node.js 20+
+
+### Install the CLI
+
+```bash
+pip install llmport-cli
+```
+
+### Check prerequisites
+
+```bash
+llmport dev doctor            # check all prerequisites
+llmport dev doctor --install  # auto-install missing tools (uv, git, node)
+```
+
+### Bootstrap a dev workspace
+
+```bash
+llmport dev init ~/projects/llm-port
+```
+
+This will:
+
+1. Clone all public repositories
+2. Install Python (`uv sync`) and Node.js (`npm install`) dependencies
+3. Start shared infrastructure (Postgres, Redis, Grafana, Loki)
+4. Run database migrations
+5. Generate `.env` files with development defaults
+6. Create a VS Code multi-root workspace file
+
+### Launch the dev environment
+
+```bash
+llmport dev up       # start backend + worker + frontend
+llmport dev status   # check repo branches and service status
+```
+
+### Production deployment
+
+```bash
+llmport doctor       # full system health check (Docker, RAM, disk, GPU, ports)
+llmport up           # start all services via docker compose
+llmport status       # running container status
+llmport module list  # show available modules
+```
+
+For more details see the [full documentation](https://llm-port.github.io).
 
 If you want early access or to be a design partner, open an issue/discussion in this repo.
 
