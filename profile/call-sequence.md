@@ -447,3 +447,270 @@ sequenceDiagram
     W->>DB: Process operations and index changes
     W->>DB: Mark publish/job final status
 ```
+
+## 14) Console Chat Completions (Frontend → Backend Proxy → Gateway)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Admin User
+    participant FE as llm_port_frontend (/chat)
+    participant BE as llm_port_backend
+    participant GW as llm_port_api
+    participant PII as llm_port_pii
+    participant LP as LLM Provider
+
+    U->>FE: Send chat message (project + session)
+    FE->>BE: POST /api/chat/completions (cookie auth)
+    BE->>BE: Cookie → JWT conversion
+    BE->>GW: POST /v1/chat/completions (Bearer JWT, session_id, project_id)
+    GW->>GW: Inject memory facts + session context into system prompt
+    GW->>GW: Resolve model alias → provider
+    alt Cloud provider + PII policy active
+      GW->>PII: POST /api/pii/sanitize (redact/tokenize)
+      PII-->>GW: Sanitized payload
+    end
+    GW->>LP: Upstream chat request (stream=true)
+    loop SSE chunks
+      LP-->>GW: data: {chunk}
+      alt PII tokenize mode
+        GW->>PII: POST /api/pii/detokenize (response chunk)
+        PII-->>GW: Restored text
+      end
+      GW-->>BE: data: {chunk}
+      BE-->>FE: data: {chunk}
+    end
+    LP-->>GW: data: [DONE]
+    GW->>GW: Persist message to session + audit log
+    GW-->>BE: data: [DONE]
+    BE-->>FE: data: [DONE]
+    FE->>FE: Render streamed response
+```
+
+## 15) Session & Memory Lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Admin / App Client
+    participant GW as llm_port_api
+    participant DB as Postgres (llm_api)
+
+    rect rgb(245,245,255)
+    Note over U,DB: Project + Session CRUD
+    U->>GW: POST /v1/sessions/projects (create project)
+    GW->>DB: Insert project row
+    GW-->>U: project_id
+
+    U->>GW: POST /v1/sessions (create session under project)
+    GW->>DB: Insert session row
+    GW-->>U: session_id
+
+    U->>GW: POST /v1/chat/completions (session_id in body)
+    GW->>DB: Load session messages + memory facts
+    GW->>GW: Build context (system prompt + memory + history)
+    GW-->>U: Completion response
+    GW->>DB: Persist assistant message to session
+
+    U->>GW: GET /v1/sessions/{id}/messages
+    GW->>DB: Read messages for session
+    GW-->>U: Message list + summaries
+    end
+
+    rect rgb(245,255,245)
+    Note over U,DB: Memory Facts
+    U->>GW: POST /v1/memory/facts (scope: project|session, content)
+    GW->>DB: Insert memory fact
+    GW-->>U: fact_id
+
+    U->>GW: GET /v1/memory/facts?scope=project&project_id=X
+    GW->>DB: Query facts by scope + owner
+    GW-->>U: Fact list
+
+    U->>GW: DELETE /v1/memory/facts/{id}
+    GW->>DB: Remove fact
+    GW-->>U: 204
+    end
+```
+
+## 16) File Attachment Upload & Extraction
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant GW as llm_port_api
+    participant FS as FileStore (MinIO / Local)
+    participant DOC as llm_port_docling
+    participant DB as Postgres (llm_api)
+
+    U->>GW: POST /v1/sessions/{session_id}/attachments (multipart file)
+    GW->>FS: Store raw file
+    FS-->>GW: storage_key
+
+    alt Docling configured
+      GW->>DOC: POST /convert (file bytes, format=markdown)
+      DOC->>DOC: IBM Docling pipeline (pages, tables, images)
+      DOC-->>GW: Extracted text + estimated token count
+    else Local fallback
+      GW->>GW: Basic text extraction
+    end
+
+    GW->>DB: Insert attachment record (file metadata + extracted text)
+    GW-->>U: 201 attachment_id + metadata
+
+    Note over U,GW: When next chat completion uses this session
+    U->>GW: POST /v1/chat/completions (session_id)
+    GW->>DB: Load attachments for session
+    GW->>GW: Inject extracted text into context
+    GW->>GW: Continue with normal completion flow
+```
+
+## 17) PII Screening Pipeline
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as API Client
+    participant GW as llm_port_api
+    participant PII as llm_port_pii
+    participant LP as LLM Provider
+    participant DB as Postgres (PII events)
+
+    C->>GW: POST /v1/chat/completions
+    GW->>GW: Resolve provider (cloud vs local)
+
+    alt Cloud provider + PII policy enabled
+      rect rgb(255,245,245)
+      Note over GW,PII: Egress PII screening
+      GW->>PII: POST /api/pii/sanitize (messages, mode=redact|tokenize)
+      PII->>PII: Presidio NER analysis (names, emails, phones, SSNs, etc.)
+      PII->>DB: Log PII event (entity types, counts)
+      PII-->>GW: Sanitized messages + token map (if tokenize mode)
+      end
+
+      GW->>LP: Forward sanitized request
+      LP-->>GW: Response
+
+      alt Tokenize mode
+        rect rgb(245,255,245)
+        Note over GW,PII: Response detokenization
+        GW->>PII: POST /api/pii/detokenize (response, token_map)
+        PII-->>GW: Restored response with original PII values
+        end
+      end
+    else Local provider or PII disabled
+      GW->>LP: Forward request as-is
+      LP-->>GW: Response
+    end
+
+    GW-->>C: Completion response
+```
+
+## 18) SSO Authentication Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User Browser
+    participant FE as llm_port_frontend
+    participant AUTH as llm_port_auth
+    participant IDP as Identity Provider (Google/GitHub/etc.)
+    participant BE as llm_port_backend
+
+    U->>FE: Click SSO login button
+    FE->>AUTH: GET /login/{provider} (redirect)
+    AUTH->>AUTH: Build OAuth authorize URL (state + PKCE)
+    AUTH-->>U: 302 Redirect to IdP
+
+    U->>IDP: Authenticate + consent
+    IDP-->>AUTH: GET /callback?code=XXX&state=YYY
+
+    AUTH->>IDP: POST /token (exchange code for access_token)
+    IDP-->>AUTH: access_token + id_token
+
+    AUTH->>IDP: GET /userinfo (Bearer access_token)
+    IDP-->>AUTH: email + profile claims
+
+    AUTH->>AUTH: Sign JWT (email, account_id, exp=120s)
+    AUTH-->>U: 302 Redirect to backend /api/auth/callback?token=JWT
+
+    U->>BE: GET /api/auth/callback?token=JWT
+    BE->>BE: Verify JWT signature
+    BE->>BE: Find or create user account
+    BE->>BE: Set httponly cookie (fapiauth)
+    BE-->>U: 302 Redirect to /admin (authenticated)
+```
+
+## 19) Notification Delivery Pipeline
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant TRIGGER as Backend Event (password reset / 5xx alert / admin invite)
+    participant BE as llm_port_backend
+    participant DB as Postgres (notification_outbox)
+    participant DISP as Background Dispatcher
+    participant MAILER as llm_port_mailer
+    participant SMTP as SMTP Provider
+
+    TRIGGER->>BE: Event fires (e.g., user requests password reset)
+    BE->>DB: INSERT notification_outbox (type, payload, status=pending)
+
+    loop Dispatcher poll interval
+      DISP->>DB: SELECT WHERE status=pending AND next_attempt_at <= now()
+      DB-->>DISP: Pending notifications
+
+      loop Each notification
+        DISP->>DISP: Check dedup fingerprint + cooldown (30 min default)
+        alt Not duplicated
+          DISP->>MAILER: POST /internal/v1/messages/{type} (Bearer service token)
+          MAILER->>MAILER: Render template (Jinja2)
+          MAILER->>SMTP: Send email
+          SMTP-->>MAILER: Delivery result
+          MAILER-->>DISP: 200 OK / error
+
+          alt Success
+            DISP->>DB: UPDATE status=sent
+          else Failure
+            DISP->>DB: UPDATE status=retry, next_attempt_at += exponential backoff
+          end
+        else Duplicate suppressed
+          DISP->>DB: UPDATE status=suppressed
+        end
+      end
+    end
+```
+
+## 20) Module Enable / Disable Lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Admin User
+    participant FE as llm_port_frontend (Settings)
+    participant BE as llm_port_backend
+    participant SET as SystemSettingsService
+    participant REG as Module Registry
+    participant DE as Docker Compose
+
+    U->>FE: Toggle module (e.g., PII) on/off
+    FE->>BE: PUT /api/admin/system/settings/values/{module_key}
+    BE->>SET: Validate + persist setting
+
+    SET->>REG: Notify module registry of state change
+    REG->>REG: Run module sync callback (cleanup / init)
+
+    alt Requires service lifecycle change
+      SET->>DE: Start or stop Docker service (compose profile)
+      DE-->>SET: Service started / stopped
+    end
+
+    SET-->>BE: Applied
+    BE-->>FE: 200 + updated module state
+
+    Note over FE: Frontend discovers module states
+    FE->>BE: GET /api/v1/services (health probe)
+    BE-->>FE: Module availability map
+    FE->>FE: Show/hide module-dependent UI sections
+```

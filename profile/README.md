@@ -5,9 +5,11 @@
 **llm.port** is a self-hosted **all-in-one LLM platform** that combines:
 
 - an OpenAI-compatible gateway for app traffic
+- a built-in chat console with sessions, memory, and file attachments
 - control-plane operations for model servers and runtime infrastructure
 - an internal RAG subsystem for ingestion, indexing, and governed retrieval
 - PII detection and redaction integrated into the gateway pipeline
+- notification delivery for system alerts and user workflows
 
 It **routes, secures, and observes** traffic across **local LLM runtimes** _and_ **remote providers**, while giving teams a single place to manage LLM services end-to-end.
 
@@ -59,16 +61,28 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 - **SSE streaming**: passthrough streaming with TTFT extraction and idle timeout handling
 - **Proxy & retry**: upstream HTTP proxy with configurable timeout and pre-first-token retry
 
+**Chat & Sessions**
+
+- **Built-in chat console**: project-scoped conversations with per-session message history
+- **Session management**: full CRUD for projects, sessions, and messages via API
+- **Memory system**: persistent user-defined facts (project or session scope) injected into context automatically
+- **File attachments**: upload files to sessions or projects with automatic text extraction
+- **Document processing**: IBM Docling integration for rich extraction (tables, pages, images) with local fallback
+- **Session context injection**: memory facts + attachment text assembled into chat context at completion time
+- **Admin oversight**: backend mirror routes for admin management of all chat activity
+- **RAG Lite**: embedded pgvector-based retrieval when the full RAG engine is not enabled
+
 **Security & Policy**
 
 - **Full RBAC**: resource + action permission model with roles, groups, and user assignment
 - **JWT authentication**: bearer tokens with tenant-aware claims across gateway and admin APIs
-- **OAuth / SSO**: OIDC/OAuth2 provider management with auto-registration and group mapping
+- **OAuth / SSO**: OIDC/OAuth2 provider management with auto-registration and group mapping via dedicated auth service
 - **Root mode / Break-glass**: time-limited elevated sessions with mandatory audit trail
 - **Rate limiting**: Redis-based fixed-window RPM and TPM per tenant
 - **Concurrency control**: distributed per-instance leasing via Redis + Lua scripts
 - **Request body limits**: configurable max payload size enforcement
 - **DB-stored secrets**: Fernet-encrypted secrets with a single master key — no secrets in env vars
+- **Column-level encryption**: sensitive model fields (API keys, tokens) encrypted at rest via per-field Fernet keys
 
 **PII Detection & Redaction**
 
@@ -87,6 +101,14 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 - **Token usage tracking**: extraction from OpenAI payloads + heuristic input estimation
 - **OpenTelemetry**: collector + Jaeger support for distributed tracing
 - **Dashboard**: system overview, health checks, container stats, Grafana panel embeds
+
+**Notifications & Alerts**
+
+- **Outbox pattern**: event-driven notification pipeline with persistent outbox and background dispatcher
+- **Email delivery**: dedicated mailer service with Jinja2-templated messages (password reset, admin alerts, invites)
+- **Alert deduplication**: fingerprint-based suppression with configurable cooldown window
+- **Retry with backoff**: exponential retry for transient delivery failures
+- **Grafana webhook integration**: system health alerts routed through the notification pipeline
 
 **Ops Console**
 
@@ -109,6 +131,8 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 
 - **Settings registry**: code-defined typed settings (string, int, bool, secret, json, enum)
 - **Init wizard**: guided multi-step setup for shared services and gateway configuration
+- **Module lifecycle**: dynamic enable/disable of optional services (PII, Auth, RAG, Docling, Mailer, Sessions) with Docker Compose profiles and sync callbacks
+- **Auto-tune**: CLI command (`llmport tune`) that benchmarks host resources and auto-configures worker counts, DB pool sizes, and resource limits
 - **Infrastructure agents**: remote agent registration, heartbeat, and distributed apply
 - **Apply orchestration**: live-reload vs. service-restart vs. stack-recreate, routed to local or remote executors
 
@@ -117,7 +141,7 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 - **Knowledge search**: vector, keyword, or hybrid scoring with filters and ACL enforcement
 - **Multi-tenant**: partitioning by tenant + optional workspace, with chunk-level ACL principals
 - **Virtual containers**: N-level container tree with assets, versions, and draft/publish workflows
-- **Upload pipeline**: presigned URL → MinIO → extract → normalize → chunk → embed → index (pgvector)
+- **Upload pipeline**: presigned URL → MinIO → Docling extract → normalize → chunk → embed → index (pgvector)
 - **Collector plugins**: pluggable connectors (local folder/SMB, SharePoint stub, extensible registry)
 - **Runtime embedding config**: embedding provider/model and chunking policy pushed from control plane
 - **Async processing**: Taskiq + RabbitMQ for ingestion, publishing, and scheduled collector syncs
@@ -127,6 +151,7 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 - **System management**: `up`, `down`, `status`, `logs`, `config`, `module enable/disable`
 - **Production installer**: interactive setup wizard with GPU auto-detection and TUI
 - **Dev workflow**: `dev init` (clone repos + install deps + start infra + run migrations)
+- **Auto-tune**: `tune` command benchmarks host CPU, memory, and disk to generate optimal worker and pool settings
 - **Health checks**: `doctor` command validates OS, Docker, Compose, GPU, RAM, disk, and port availability
 - **Env generation**: `.env` file generation for dev and production with random secret generation
 
@@ -146,6 +171,7 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 - Model rollout workflows (staged deploy, canary, rollback)
 - Fine-grained cost controls and usage analytics
 - Backup/restore for shared services
+- More collector plugins (Google Drive, Confluence, S3)
 
 ---
 
@@ -162,9 +188,12 @@ without changing your apps or losing governance and observability.
 | ------------------- | ------------------------------------------------------------------------------------------- |
 | `llm-port-frontend` | React admin console UI (Vite + React Router)                                                |
 | `llm-port-backend`  | FastAPI control-plane: users, RBAC, LLM management, system settings, Docker orchestration   |
-| `llm-port-api`      | OpenAI-compatible V1 gateway service (FastAPI)                                              |
+| `llm-port-api`      | OpenAI-compatible V1 gateway service with sessions, memory, and attachments (FastAPI)       |
 | `llm-port-rag`      | Internal RAG subsystem: ingestion, knowledge search, collector plugins (FastAPI + pgvector) |
 | `llm-port-pii`      | PII detection and redaction service (FastAPI + Presidio)                                    |
+| `llm-port-auth`     | SSO / OIDC authentication service with OAuth provider adapters (FastAPI)                    |
+| `llm-port-mailer`   | Email delivery service with templated notifications (FastAPI + Jinja2)                      |
+| `llm-port-docling`  | Document processing service for text extraction (FastAPI + IBM Docling)                     |
 | `llm-port-cli`      | CLI installer and management tool (Click + Textual TUI)                                     |
 | `llm-port-shared`   | Shared Docker Compose stack: Postgres, Redis, Grafana, Loki, Alloy                          |
 | `llm-port-dev`      | Project documentation, feature specs, infrastructure docs, dev scripts                      |
