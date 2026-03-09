@@ -15,7 +15,7 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 
 ## Architecture
 
-<img src="./images/arch.png">
+<img src="./images/architecture.svg">
 
 ---
 
