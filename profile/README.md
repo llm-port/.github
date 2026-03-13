@@ -210,7 +210,7 @@ without changing your apps or losing governance and observability.
 | `llm-port-ee`       | Enterprise Edition license framework and shared EE infrastructure                         |
 | `llm-port-docling`  | Document processing service (IBM Docling)                                                 |
 | `llm-port-mailer`   | Email delivery service for notifications and alerts                                       |
-| `llm-port-auth`     | SSO / OIDC authentication service                                                        |
+| `llm-port-auth`     | SSO / OIDC authentication service                                                         |
 | `llm-port-shared`   | Shared Docker Compose stack: Postgres, Redis, Grafana, Loki, Alloy, Langfuse              |
 
 > Visibility note: the org is public, but some repos may be private temporarily while we are finalizing and cleaning things up.
