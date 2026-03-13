@@ -75,12 +75,16 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 
 - **Built-in chat console**: project-scoped conversations with per-session message history
 - **Session management**: full CRUD for projects, sessions, and messages via API
+- **Drag-and-drop organisation**: drag sessions between projects in the sidebar (dnd-kit)
+- **Streaming with usage tracking**: real-time SSE streaming with token usage and response-time display
+- **Error resilience**: error bubbles with one-click retry, reloading detects incomplete exchanges
 - **Memory system**: persistent user-defined facts (project or session scope) injected into context automatically
 - **File attachments**: upload files to sessions or projects with automatic text extraction
 - **Document processing**: IBM Docling integration for rich extraction (tables, pages, images) with local fallback
 - **Session context injection**: memory facts + attachment text assembled into chat context at completion time
 - **Admin oversight**: backend mirror routes for admin management of all chat activity
 - **RAG Lite**: embedded pgvector-based retrieval when the full RAG engine is not enabled
+- **Dark / light mode**: mode-aware chat bubble theming with asymmetric bubble shapes
 
 **Security & Policy**
 
@@ -196,12 +200,18 @@ without changing your apps or losing governance and observability.
 
 | Repo                | Description                                                                               |
 | ------------------- | ----------------------------------------------------------------------------------------- |
-| `llm-port-frontend` | React admin console UI (Vite + React Router)                                              |
+| `llm-port-frontend` | React admin console UI (React Router + MUI)                                               |
 | `llm-port-backend`  | FastAPI control-plane: users, RBAC, LLM management, system settings, Docker orchestration |
 | `llm-port-api`      | OpenAI-compatible V1 gateway service with sessions, memory, and attachments (FastAPI)     |
 | `llm-port-pii`      | PII detection and redaction service (FastAPI + Presidio)                                  |
+| `llm-port-rag`      | RAG subsystem: vector/keyword/hybrid search, pgvector, MinIO, collector plugins           |
 | `llm-port-cli`      | CLI installer and management tool (Click + Textual TUI)                                   |
-| `llm-port-shared`   | Shared Docker Compose stack: Postgres, Redis, Grafana, Loki, Alloy                        |
+| `llm-port-cli-ee`   | Enterprise CLI wrapper with license management                                            |
+| `llm-port-ee`       | Enterprise Edition license framework and shared EE infrastructure                         |
+| `llm-port-docling`  | Document processing service (IBM Docling)                                                 |
+| `llm-port-mailer`   | Email delivery service for notifications and alerts                                       |
+| `llm-port-auth`     | SSO / OIDC authentication service                                                        |
+| `llm-port-shared`   | Shared Docker Compose stack: Postgres, Redis, Grafana, Loki, Alloy, Langfuse              |
 
 > Visibility note: the org is public, but some repos may be private temporarily while we are finalizing and cleaning things up.
 

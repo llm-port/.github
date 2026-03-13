@@ -255,7 +255,7 @@ These libraries are bundled into llm.port service images at build time.
 | Emotion              | MIT     | CSS-in-JS (`@emotion/react`, `@emotion/styled`)                             |
 | TanStack React Table | MIT     | Data table                                                                  |
 | React Flow           | MIT     | Node-based graph/flow visualization                                         |
-| dnd-kit              | MIT     | Drag-and-drop (`@dnd-kit/core`, `@dnd-kit/sortable`)                        |
+| dnd-kit              | MIT     | Drag-and-drop (`@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`)  |
 | i18next              | MIT     | Internationalization (`i18next`, `react-i18next`)                           |
 | Tailwind CSS         | MIT     | Utility-first CSS framework                                                 |
 
