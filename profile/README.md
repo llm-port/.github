@@ -33,6 +33,8 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 
 <img src="./images/llm_provider_local.png">
 
+<img src="./images/llm_provider_remote.png">
+
 <img src="./images/models.png">
 
 <img src="./images/logging.png">
@@ -44,6 +46,20 @@ It **routes, secures, and observes** traffic across **local LLM runtimes** _and_
 <img src="./images/profile.png">
 
 <img src="./images/pii.png">
+
+<img src="./images/pii_logs.png">
+
+<img src="./images/mcp.png">
+
+<img src="./images/mcp_scanner.png">
+
+<img src="./images/chat_admin.png">
+
+<img src="./images/nodes.png">
+
+<img src="./images/node_stats.png">
+
+<img src="./images/skills.png">
 
 <img src="./images/rag_kb.png">
 
